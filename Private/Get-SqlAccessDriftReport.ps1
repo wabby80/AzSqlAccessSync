@@ -78,17 +78,22 @@ function Get-SqlAccessDriftReport {
     }
 
     $serverAccessNames = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
-    $rows = Invoke-SqlAccessQuery -SqlServer $SqlServer -AccessToken $AccessToken -Query @"
-        SELECT COALESCE(sp.name, sl.name) AS name
-        FROM sys.server_role_members srm
-        LEFT JOIN sys.server_principals sp ON sp.principal_id = srm.member_principal_id
-        LEFT JOIN sys.sql_logins        sl ON sl.principal_id = srm.member_principal_id
+    # sys.server_permissions doesn't exist on Azure SQL Database, which has no server-level GRANTs
+    # beyond the ##MS_...## server roles already covered by sys.server_role_members.
+    $serverPermissions = if ($IsAzureSqlServer) { '' } else { @"
         UNION
         SELECT COALESCE(sp.name, sl.name) AS name
         FROM sys.server_permissions p
         LEFT JOIN sys.server_principals sp ON sp.principal_id = p.grantee_principal_id
         LEFT JOIN sys.sql_logins        sl ON sl.principal_id = p.grantee_principal_id
         WHERE NOT (p.permission_name = 'CONNECT SQL' AND p.state IN ('G','W'))
+"@ }
+    $rows = Invoke-SqlAccessQuery -SqlServer $SqlServer -AccessToken $AccessToken -Query @"
+        SELECT COALESCE(sp.name, sl.name) AS name
+        FROM sys.server_role_members srm
+        LEFT JOIN sys.server_principals sp ON sp.principal_id = srm.member_principal_id
+        LEFT JOIN sys.sql_logins        sl ON sl.principal_id = srm.member_principal_id
+$serverPermissions
 "@
     foreach ($row in $rows) { if ($row.name -isnot [System.DBNull]) { [void]$serverAccessNames.Add($row.name) } }
 

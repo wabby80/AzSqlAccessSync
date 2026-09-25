@@ -2,6 +2,17 @@
 
 All notable changes to the AzSqlAccessSync module are recorded here.
 
+## 0.10.1
+
+### Fixed
+
+- **Drift report failed on Azure SQL Database** with `Invalid object name 'sys.server_permissions'`
+  (Msg 208), marking every `Sync-SqlUserAccess` run against Azure SQL Database as `FAILED`. The
+  server-level access check added in 0.8.0 queried `sys.server_permissions`, which only exists on
+  SQL Server. On Azure SQL Database it now checks server role membership only
+  (`sys.server_role_members`), which covers the only server-level access that platform has.
+  VM/on-prem SQL Server behavior is unchanged. (`Private/Get-SqlAccessDriftReport.ps1`)
+
 ## 0.10.0
 
 ### Changed
