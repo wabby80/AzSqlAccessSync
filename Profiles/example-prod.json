@@ -1,5 +1,6 @@
 {
   "LoginsFolderPath": "./../Logins",
+  "RolesFolderPath": "./../Roles",
   "SqlServer": "myorg-prod-sql.database.windows.net",
   "Environment": "PROD",
   "LoginIgnoreList": []

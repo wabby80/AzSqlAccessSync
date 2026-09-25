@@ -123,12 +123,21 @@ Instead of specifying parameters individually, create a profile JSON:
 
 ```json
 {
-  "LoginsFolderPath": "./Logins",
+  "LoginsFolderPath": "./../Logins",
+  "RolesFolderPath": "./../Roles",
   "SqlServer": "my-server.database.windows.net",
   "Environment": "DEV",
   "LoginIgnoreList": ["some-login-to-skip"]
 }
 ```
+
+| Field | Description |
+|---|---|
+| `LoginsFolderPath` | Folder with the login JSON files. A relative path is resolved from the profile file's folder. |
+| `RolesFolderPath` | Folder with the role JSON files, resolved the same way. Required by `Sync-SqlRoles`; optional for `Get-SqlAccessReport` (without it, custom roles aren't expanded). Not used by `Sync-SqlUserAccess`. There is no default — keep your configuration outside the module folder, since `Update-Module` replaces it. |
+| `SqlServer` | Server FQDN. |
+| `Environment` | Matched against `acceptedenvironments` in the login and role files. |
+| `LoginIgnoreList` | Optional. Login names to leave alone. |
 
 ## Usage
 
@@ -229,7 +238,7 @@ The drift report at the end lists:
 
 A separate, standalone function for a different concern: standing database roles (a
 least-privilege baseline — e.g. `AppOperations`, `Support_RW`, `LinkedServerAdmin`) rather
-than per-login access. Reads role definitions from the `Roles\` folder and ensures each
+than per-login access. Reads role definitions from the profile's `RolesFolderPath` and ensures each
 one exists, with its declared memberships and grants, on **every non-system database** on
 the target server by default — regardless of whether anyone is currently assigned to the
 role. Roles are a standing definition, not tied to a specific login. A role can instead be
@@ -327,7 +336,7 @@ Sync-SqlRoles -EnvProfile .\Profiles\example.json -Document MyAppDb
 
 | Parameter | Description |
 |---|---|
-| `-EnvProfile` | Path to an environment profile JSON file (`SqlServer` + `Environment`; same profiles `Sync-SqlUserAccess` uses). Required. |
+| `-EnvProfile` | Path to an environment profile JSON file (`SqlServer` + `Environment` + `RolesFolderPath`; same profiles `Sync-SqlUserAccess` uses). Required. |
 | `-WhatIf` | Print all planned actions without executing any SQL. |
 | `-PassThru` | Also return a structured summary object (`Mode`, `Status`, `Changes`, `Warnings`, `Errors`) for scripted/CI consumption. |
 
@@ -394,7 +403,8 @@ $rows = Get-SqlAccessReport -EnvProfile .\Profiles\example.json -PassThru
 
 | Parameter | Description |
 |---|---|
-| `-EnvProfile` | Path to an environment profile JSON file (`LoginsFolderPath` + `SqlServer` + `Environment`; same profiles `Sync-SqlUserAccess` uses). |
+| `-EnvProfile` | Path to an environment profile JSON file (`LoginsFolderPath` + `SqlServer` + `Environment`, optionally `RolesFolderPath`; same profiles `Sync-SqlUserAccess` uses). |
+| `-RolesFolderPath` | With the direct parameters: folder with the role JSON files. Optional; without it, custom roles are reported unexpanded. |
 | `-LoginsFolderPath` / `-Environment` / `-SqlServer` | Direct parameters, used instead of `-EnvProfile`. `-SqlServer` is only used to look up the server's Entra admin via ARM — this report never connects to SQL itself. |
 | `-Database` | Limit the report to a single database. Omit to report on every database declared in JSON. The server Entra admin's rows are still included for this one database, since that access isn't scoped by `-Database` at all. |
 | `-ExportToExcel` | Write the report to a formatted `.xlsx` — a bold "SQL Access Report" title and generated-on date above the table, a light-blue-filled bold header row, autofilter, and the header row frozen while scrolling — in addition to the console output, then open it. The [`ImportExcel`](https://github.com/dfinke/ImportExcel) module — **not** a hard dependency of this module — is installed automatically on first use if it isn't already present. |

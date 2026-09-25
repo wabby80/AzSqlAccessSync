@@ -2,6 +2,7 @@
 # does not prompt or throw. Validation happens inside the function's own param block.
 param(
     [string]$LoginsFolderPath,
+    [string]$RolesFolderPath,
     [string]$Environment,
     [string]$SqlServer,
     [string]$EnvProfile,
@@ -54,6 +55,11 @@ function Get-SqlAccessReport {
     .PARAMETER LoginsFolderPath
         Path to the folder containing per-login JSON files.
 
+    .PARAMETER RolesFolderPath
+        Optional. Path to the folder containing role definition JSON files (the same folder
+        Sync-SqlRoles uses). Without it, custom roles are reported as-is instead of being expanded
+        into their effective grants. With -EnvProfile, read from the profile's RolesFolderPath.
+
     .PARAMETER Environment
         The environment to match against "acceptedenvironments" in each JSON file (e.g. 'DEV', 'PROD').
 
@@ -66,7 +72,7 @@ function Get-SqlAccessReport {
 
     .PARAMETER EnvProfile
         Path to a JSON profile file containing LoginsFolderPath, SqlServer, Environment, and
-        optional LoginIgnoreList (same profile files Sync-SqlUserAccess uses).
+        optional RolesFolderPath and LoginIgnoreList (same profile files Sync-SqlUserAccess uses).
 
     .PARAMETER OneDatabase
         Limits the report to a single database. Omit to report on every database declared in JSON.
@@ -98,6 +104,9 @@ function Get-SqlAccessReport {
     param(
         [Parameter(Mandatory, ParameterSetName = 'Direct')]
         [string]$LoginsFolderPath,
+
+        [Parameter(ParameterSetName = 'Direct')]
+        [string]$RolesFolderPath,
 
         [Parameter(Mandatory, ParameterSetName = 'Direct')]
         [string]$Environment,
@@ -138,6 +147,13 @@ function Get-SqlAccessReport {
         } else {
             Join-Path $profileDir $ep.LoginsFolderPath
         }
+        if ($ep.RolesFolderPath) {
+            $RolesFolderPath = if ([System.IO.Path]::IsPathRooted($ep.RolesFolderPath)) {
+                $ep.RolesFolderPath
+            } else {
+                Join-Path $profileDir $ep.RolesFolderPath
+            }
+        }
         $Environment = $ep.Environment
         $SqlServer   = $ep.SqlServer
         if ($ep.LoginIgnoreList) { $loginIgnoreList = $ep.LoginIgnoreList }
@@ -146,6 +162,7 @@ function Get-SqlAccessReport {
         Write-Host "SQL Server:                $SqlServer"        -ForegroundColor Cyan
         Write-Host "Environment:               $Environment"      -ForegroundColor Cyan
     }
+    if ($RolesFolderPath) { Write-Host "Roles Folder Path:         $RolesFolderPath" -ForegroundColor Cyan }
 
     if ($OneDatabase) { Write-Host "Database (filtered):       $OneDatabase" -ForegroundColor Cyan }
     Write-Host ''
@@ -158,8 +175,12 @@ function Get-SqlAccessReport {
     $allLogins = Import-LoginConfig -LoginsFolderPath $LoginsFolderPath -Environment $Environment -IgnoreList $loginIgnoreList
 
     $roleDefsByName = @{}
-    foreach ($roleDef in (Import-RoleConfig -Environment $Environment)) {
-        $roleDefsByName[$roleDef.role] = $roleDef
+    if ($RolesFolderPath) {
+        foreach ($roleDef in (Import-RoleConfig -RolesFolderPath $RolesFolderPath -Environment $Environment)) {
+            $roleDefsByName[$roleDef.role] = $roleDef
+        }
+    } else {
+        Write-Warning 'No RolesFolderPath given - custom roles are reported as-is, not expanded into their effective grants.'
     }
 
     $entraCache = @{}

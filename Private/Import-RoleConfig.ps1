@@ -1,13 +1,13 @@
 function Import-RoleConfig {
     param(
         [Parameter(Mandatory)]
+        [string]$RolesFolderPath,
+        [Parameter(Mandatory)]
         [string]$Environment
     )
 
-    # Roles are a single shared definition set for the whole module, not per-environment-profile
-    # config, so the folder is resolved relative to this script rather than read from a profile —
-    # same convention Sync-SqlRoles uses for its own (separate, inline) copy of this loader.
-    $rolesFolderPath = Join-Path $PSScriptRoot '..\Roles'
+    # Same loader as Sync-SqlRoles' own (separate, inline) copy. The folder comes from the caller
+    # (profile RolesFolderPath or -RolesFolderPath), never from inside the module.
     if (-not (Test-Path $rolesFolderPath)) {
         throw "Roles folder not found: $rolesFolderPath"
     }

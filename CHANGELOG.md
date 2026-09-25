@@ -2,6 +2,28 @@
 
 All notable changes to the AzSqlAccessSync module are recorded here.
 
+## 0.10.0
+
+### Changed
+
+- **Breaking: role definitions are read from the profile's `RolesFolderPath`.** Previously
+  `Sync-SqlRoles` and `Get-SqlAccessReport` always read the `Roles` folder inside the module,
+  which after `Install-Module` is the installed module's folder and gets replaced by
+  `Update-Module`. `RolesFolderPath` is resolved like `LoginsFolderPath` (relative to the profile
+  file unless rooted).
+  - `Sync-SqlRoles` requires it and throws if the profile has none. There is deliberately no
+    fallback to the module's own `Roles` folder, which only holds examples.
+  - `Get-SqlAccessReport` takes it from the profile or the new `-RolesFolderPath` parameter. It's
+    optional there: without it, custom roles are reported unexpanded, with a warning.
+  - To migrate, add `"RolesFolderPath": "<path to your Roles folder>"` to each profile.
+
+### Added
+
+- **Example configuration.** `Logins/`, `Roles/` and `Profiles/` hold a small fictional setup,
+  described in the README's "Examples" section.
+- **`Publish.ps1`.** Publishes from a staging folder containing only an allow-list of module files,
+  so repository-only files never end up in the package. Supports `-WhatIf`.
+
 ## 0.9.0
 
 ### Added

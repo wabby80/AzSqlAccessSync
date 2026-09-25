@@ -1,6 +1,6 @@
 @{
     RootModule        = 'AzSqlAccessSync.psm1'
-    ModuleVersion     = '0.9.0'
+    ModuleVersion     = '0.10.0'
     GUID              = '53254f22-bd9f-4bfd-b759-b7d2276c5a48'
     Author            = 'Bjørn Christopher Wang'
     Copyright         = '(c) 2026 Bjørn Christopher Wang. Licensed under the MIT License.'

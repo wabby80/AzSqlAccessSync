@@ -1,5 +1,6 @@
 {
   "LoginsFolderPath": "./../Logins",
+  "RolesFolderPath": "./../Roles",
   "SqlServer": "sqlvm01.corp.example.com",
   "Environment": "VMPROD",
   "LoginIgnoreList": []

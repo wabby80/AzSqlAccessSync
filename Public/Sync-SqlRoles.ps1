@@ -14,7 +14,7 @@ function Sync-SqlRoles {
         Ensures the standing database roles defined in Roles/*.json exist on every database.
 
     .DESCRIPTION
-        Reads role definition JSON files from the module's Roles folder, filters by Environment
+        Reads role definition JSON files from the profile's RolesFolderPath, filters by Environment
         (from -EnvProfile), and applies each definition (CREATE ROLE, role memberships, EXECUTE and
         other GRANTs) to every non-system database on the target server — regardless of whether the
         role is already in use anywhere. Roles are a standing baseline, not tied to a specific
@@ -48,8 +48,9 @@ function Sync-SqlRoles {
         undocumented, and dropped with -Force, same as undocumented database roles.
 
     .PARAMETER EnvProfile
-        Path to a JSON profile file containing SqlServer and Environment (same profile files used
-        by Sync-SqlUserAccess, e.g. Profiles/example.json).
+        Path to a JSON profile file containing SqlServer, Environment and RolesFolderPath (same
+        profile files used by Sync-SqlUserAccess, e.g. Profiles/example.json). RolesFolderPath is
+        required and resolved relative to the profile file unless rooted; there is no default.
 
     .PARAMETER WhatIf
         Prints what would be done without executing any SQL.
@@ -110,11 +111,20 @@ function Sync-SqlRoles {
     Write-Host "Using Environment Profile: $EnvProfile" -ForegroundColor Cyan
     Write-Host "SQL Server:                $SqlServer"  -ForegroundColor Cyan
     Write-Host "Environment:               $Environment" -ForegroundColor Cyan
+
+    # Resolved like LoginsFolderPath: relative to the profile file unless rooted. Required - there is
+    # deliberately no fallback to a folder inside the module, which would hold example roles.
+    if (-not $ep.RolesFolderPath) {
+        throw "Environment profile '$EnvProfile' has no RolesFolderPath."
+    }
+    $rolesFolderPath = if ([System.IO.Path]::IsPathRooted($ep.RolesFolderPath)) {
+        $ep.RolesFolderPath
+    } else {
+        Join-Path (Split-Path -Parent (Resolve-Path $EnvProfile)) $ep.RolesFolderPath
+    }
+    Write-Host "Roles Folder Path:         $rolesFolderPath" -ForegroundColor Cyan
     Write-Host ''
 
-    # Roles are a single shared definition set for the whole module, not per-environment-profile
-    # config, so the folder is resolved relative to this script rather than read from the profile.
-    $rolesFolderPath = Join-Path $PSScriptRoot '..\Roles'
     if (-not (Test-Path $rolesFolderPath)) {
         throw "Roles folder not found: $rolesFolderPath"
     }

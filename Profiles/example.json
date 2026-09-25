@@ -1,5 +1,6 @@
 {
   "LoginsFolderPath": "./../Logins",
+  "RolesFolderPath": "./../Roles",
   "SqlServer": "myorg-dev-sql.database.windows.net",
   "Environment": "DEV",
   "LoginIgnoreList": ["some-login-to-skip"]

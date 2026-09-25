@@ -23,25 +23,16 @@ the new repo can pick up where this left off.
    `DEV`/`TEST`/`STAGE`/`PROD` environments). `CompanyName` was removed from the manifest.
    Company-related information must never be added back to code or Markdown — see `CLAUDE.md`.
 
-2. **Delete files that aren't part of the module.**
-   - `.claude/` (if present)
-   - this file, once everything here is done (or keep it out of the published folder)
-   - `spec-kv-sql-login-passwords.md` is kept (cleaned of internal names) as the design for a
-     not-yet-implemented feature; move it to a `docs/` folder or an issue if it shouldn't ship
+2. **Keep repository-only files out of the package — done.** Publish with `./Publish.ps1`, never
+   `Publish-Module` on the repo folder directly: it stages an allow-list of module files (manifest,
+   `Public/`, `Private/`, the example folders, README, CHANGELOG, LICENSE) and publishes from
+   there. `PSGALLERY.md`, `CLAUDE.md`, `spec-kv-sql-login-passwords.md` and `Publish.ps1` itself
+   stay in the repo only. A new file ships only once it's added to the list in `Publish.ps1`.
 
-3. **Make the Roles folder configurable.** `Roles/` is read from a fixed path relative to the
-   module (`Join-Path $PSScriptRoot '..\Roles'`) in:
-   - `Public/Sync-SqlRoles.ps1` (`$rolesFolderPath`, also used by `-Document` to write its output)
-   - `Private/Import-RoleConfig.ps1`
-
-   After `Install-Module` that path is inside the module's install directory, so users would have
-   to edit files there and `Update-Module` would overwrite them. Logins already avoid this via
-   `LoginsFolderPath` in the environment profile (resolved relative to the profile file — see
-   `Public/Get-SqlAccessReport.ps1`). Add a `RolesFolderPath` profile field handled the same way.
-   Whether to keep falling back to the bundled `Roles/` when it's absent is an open decision.
-
-   Done when: `Sync-SqlRoles`, `Get-SqlAccessReport` and `-Document` all read/write roles from the
-   path in the profile, and the README documents the field.
+3. **Make the Roles folder configurable — done (0.10.0).** `RolesFolderPath` in the profile,
+   resolved like `LoginsFolderPath`. Required by `Sync-SqlRoles` (no fallback to the module's own
+   `Roles/`, which only holds examples); optional for `Get-SqlAccessReport`, which also takes
+   `-RolesFolderPath`.
 
 4. **Complete the manifest (`AzSqlAccessSync.psd1`).**
    - Done: `ProjectUri`, `LicenseUri` and `ReleaseNotes` point at the GitHub repo; `Copyright` is
