@@ -19,8 +19,9 @@
     PrivateData       = @{
         PSData = @{
             Tags         = @('Azure', 'SQL', 'AccessManagement', 'EntraID', 'AzureSQL', 'DBA', 'RBAC')
-            ProjectUri   = ''
-            ReleaseNotes = 'See CHANGELOG.md.'
+            ProjectUri   = 'https://github.com/wabby80/AzSqlAccessSync'
+            LicenseUri   = 'https://github.com/wabby80/AzSqlAccessSync/blob/main/LICENSE'
+            ReleaseNotes = 'https://github.com/wabby80/AzSqlAccessSync/blob/main/CHANGELOG.md'
         }
     }
 }

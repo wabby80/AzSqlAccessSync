@@ -1,0 +1,13 @@
+{
+  "acceptedenvironments": ["TEST", "PROD"],
+  "logins": [
+    {
+      "login": "myorg-reporting-group",
+      "type": "external",
+      "databases": [
+        { "database": "ReportingDb", "roles": ["db_datareader"], "grantView": ["DEFINITION"] },
+        { "database": "MyAppDb",     "roles": ["db_datareader"] }
+      ]
+    }
+  ]
+}

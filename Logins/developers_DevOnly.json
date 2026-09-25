@@ -1,0 +1,21 @@
+{
+  "acceptedenvironments": ["DEV", "TEST"],
+  "logins": [
+    {
+      "login": "SQL-Developers",
+      "type": "external",
+      "databases": [
+        { "database": "MyAppDb",     "roles": ["db_owner"] },
+        { "database": "ReportingDb", "roles": ["db_owner"] },
+        { "database": "master",      "roles": ["##MS_ServerStateReader##"] }
+      ]
+    },
+    {
+      "login": "legacy_app_user",
+      "type": "sql",
+      "databases": [
+        { "database": "MyAppDb", "roles": ["db_datareader", "db_datawriter"] }
+      ]
+    }
+  ]
+}

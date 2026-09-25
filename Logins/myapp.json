@@ -1,0 +1,23 @@
+{
+  "acceptedenvironments": ["DEV", "TEST", "PROD"],
+  "logins": [
+    {
+      "login": "myorg-${environment}-myapp-id",
+      "type": "external",
+      "databases": [
+        {
+          "database": "MyAppDb",
+          "roles": ["db_datareader", "db_datawriter"],
+          "grantExecute": ["SCHEMA::dbo"]
+        }
+      ]
+    },
+    {
+      "login": "myorg-${environment}-myapp-migrations-id",
+      "type": "external",
+      "databases": [
+        { "database": "MyAppDb", "roles": ["db_owner"] }
+      ]
+    }
+  ]
+}

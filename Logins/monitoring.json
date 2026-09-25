@@ -1,0 +1,14 @@
+{
+  "acceptedenvironments": ["DEV", "TEST", "PROD"],
+  "logins": [
+    {
+      "login": "myorg-monitoring-id",
+      "type": "external",
+      "databases": [
+        { "database": "master",      "roles": ["##MS_ServerStateReader##"] },
+        { "database": "MyAppDb",     "roles": [], "grantView": ["DATABASE STATE", "DEFINITION"] },
+        { "database": "ReportingDb", "roles": [], "grantView": ["DATABASE STATE", "DEFINITION"] }
+      ]
+    }
+  ]
+}

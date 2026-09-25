@@ -12,6 +12,7 @@ the new repo can pick up where this left off.
   config files are not carried over.
 - **`Logins/`, `Roles/` and `Profiles/` are replaced with examples** — the original organization's
   real configuration is removed and each folder gets example files showing the format instead.
+  Done: a fictional DEV/TEST/PROD/VMPROD setup, described in the README's "Examples" section.
 
 ## Remaining work
 
@@ -43,10 +44,10 @@ the new repo can pick up where this left off.
    path in the profile, and the README documents the field.
 
 4. **Complete the manifest (`AzSqlAccessSync.psd1`).**
-   - `PrivateData.PSData.ProjectUri` — currently empty; set to the new repo URL
-   - `PrivateData.PSData.LicenseUri` — missing; link the `LICENSE` file (MIT) in the new repo
-   - `Copyright` — done: MIT, holder is the module author (matches `LICENSE`)
-   - `ReleaseNotes` — point at the CHANGELOG URL in the new repo instead of "See CHANGELOG.md."
+   - Done: `ProjectUri`, `LicenseUri` and `ReleaseNotes` point at the GitHub repo; `Copyright` is
+     MIT with the module author as holder (matches `LICENSE`).
+   - The repo is private for now, so those links 404 for gallery users — make it public before
+     (or right after) the first publish.
 
 5. **Check the module name is free:** `Find-Module AzSqlAccessSync` should return nothing.
 

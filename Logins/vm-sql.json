@@ -1,0 +1,28 @@
+{
+  "acceptedenvironments": ["VMPROD"],
+  "logins": [
+    {
+      "login": "SQL-DBA-Admins",
+      "type": "external",
+      "databases": [
+        { "database": "master",   "roles": [] },
+        { "database": "msdb",     "roles": ["SQLAgentOperatorRole"] },
+        { "database": "LegacyDb", "roles": ["db_owner"] }
+      ]
+    },
+    {
+      "login": "SQL-Support-Writers-Eligible",
+      "type": "external",
+      "databases": [
+        { "database": "LegacyDb", "roles": ["Support_RW"] }
+      ]
+    },
+    {
+      "login": "legacy_batch_user",
+      "type": "sql",
+      "databases": [
+        { "database": "LegacyDb", "roles": ["db_datareader", "db_datawriter"] }
+      ]
+    }
+  ]
+}

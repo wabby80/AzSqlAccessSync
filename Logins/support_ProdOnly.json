@@ -1,0 +1,28 @@
+{
+  "acceptedenvironments": ["PROD"],
+  "logins": [
+    {
+      "login": "SQL-Support-Readers",
+      "type": "external",
+      "databases": [
+        { "database": "MyAppDb",     "roles": ["Support_R"] },
+        { "database": "ReportingDb", "roles": ["Support_R"] }
+      ]
+    },
+    {
+      "login": "SQL-Support-Writers-Eligible",
+      "type": "external",
+      "databases": [
+        { "database": "MyAppDb",     "roles": ["Support_RW"] },
+        { "database": "ReportingDb", "roles": ["Support_RW"] }
+      ]
+    },
+    {
+      "login": "SQL-JobsDb-Admins",
+      "type": "external",
+      "databases": [
+        { "database": "JobsDb", "roles": ["jobs_admin"] }
+      ]
+    }
+  ]
+}

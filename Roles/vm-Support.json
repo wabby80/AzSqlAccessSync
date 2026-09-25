@@ -1,0 +1,11 @@
+{
+  "acceptedenvironments": ["VMPROD"],
+  "roles": [
+    {
+      "role": "Support_RW",
+      "memberOf": ["db_datareader", "db_datawriter", "db_ddladmin"],
+      "grantExecute": true,
+      "grants": ["VIEW DATABASE STATE", "ALTER ANY CONNECTION"]
+    }
+  ]
+}

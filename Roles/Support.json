@@ -1,0 +1,16 @@
+{
+  "acceptedenvironments": ["PROD"],
+  "roles": [
+    {
+      "role": "Support_R",
+      "memberOf": ["db_datareader"],
+      "grantExecute": true
+    },
+    {
+      "role": "Support_RW",
+      "memberOf": ["db_datareader", "db_datawriter", "db_ddladmin"],
+      "grantExecute": true,
+      "grants": ["VIEW DATABASE STATE", "KILL DATABASE CONNECTION"]
+    }
+  ]
+}

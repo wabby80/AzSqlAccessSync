@@ -1,0 +1,11 @@
+{
+  "acceptedenvironments": ["PROD"],
+  "roles": [
+    {
+      "role": "DatabaseCreators",
+      "databases": ["master"],
+      "memberOf": ["dbmanager"],
+      "grantExecute": false
+    }
+  ]
+}

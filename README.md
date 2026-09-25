@@ -39,6 +39,26 @@ Order matters: the identity must exist before it can be given the role.
 Import-Module .\AzSqlAccessSync.psd1
 ```
 
+## Examples
+
+The `Logins\`, `Roles\` and `Profiles\` folders contain a small example setup for a fictional
+organization with environments `DEV`, `TEST`, `PROD` (Azure SQL Database) and `VMPROD` (SQL
+Server on a VM). Replace them with your own configuration.
+
+| File | Shows |
+|---|---|
+| `Profiles\example.json`, `example-prod.json`, `example-vm.json` | One profile per target server and environment. |
+| `Logins\myapp.json` | Per-environment managed identities via the `${environment}` placeholder, least-privilege roles plus `grantExecute`. |
+| `Logins\reporting.json` | An Entra group with read access to several databases and `grantView`. |
+| `Logins\monitoring.json` | A server role in `master` (`##MS_ServerStateReader##`) plus `VIEW` grants without any database role. |
+| `Logins\support_ProdOnly.json` | Groups assigned the custom roles from `Roles\` (e.g. read vs. PIM-eligible write). |
+| `Logins\developers_DevOnly.json` | Broad access in non-production only, and a pre-existing `type: sql` login. |
+| `Logins\vm-sql.json` | A VM target: `msdb` roles and a custom role with a server-scope grant. |
+| `Roles\Support.json` | A read-only/read-write role pair applied to every database. |
+| `Roles\JobsDb.json` | Roles scoped to one database with `databases`. |
+| `Roles\DatabaseCreators.json` | A role applied only in `master` (listed explicitly in `databases`). |
+| `Roles\vm-Support.json` | A server-scope grant (`ALTER ANY CONNECTION`), applied via a server role on VM targets. |
+
 ## Login JSON format
 
 Each file in the `Logins\` folder declares one or more logins and their database access:

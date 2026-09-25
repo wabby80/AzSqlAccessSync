@@ -1,0 +1,18 @@
+{
+  "acceptedenvironments": ["PROD"],
+  "roles": [
+    {
+      "role": "jobs_reader",
+      "databases": ["JobsDb"],
+      "memberOf": ["db_datareader"],
+      "grantExecute": false
+    },
+    {
+      "role": "jobs_admin",
+      "databases": ["JobsDb"],
+      "memberOf": [],
+      "grantExecute": true,
+      "grants": ["CREATE PROCEDURE", "CREATE TABLE", "CREATE VIEW", "VIEW DATABASE STATE"]
+    }
+  ]
+}
