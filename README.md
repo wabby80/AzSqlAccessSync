@@ -92,6 +92,7 @@ Each file in the `Logins\` folder declares one or more logins and their database
 | `acceptedenvironments` | Environments this file applies to. Must match the `-Environment` value exactly (case-sensitive). |
 | `login` | Login name. Supports `${environment}` placeholder — replaced with the lowercased environment value at runtime. |
 | `type` | `external` (Entra ID/AAD) or `sql`. SQL login creation is intentionally unsupported — passwords must not be stored in JSON. |
+| `defaultSchema` | Optional, on the login. Default schema for its user in every database it is declared in (e.g. `dbo`). Set it for Entra groups whose members create objects: a group user has no default schema, so an unqualified `CREATE TABLE` by a member tries to create a schema named after that member and fails. Applied on create, and corrected on existing users when it differs. |
 | `roles` | Database roles (e.g. `db_owner`, `db_datareader`) or server roles prefixed with `##` (e.g. `##MS_ServerStateReader##`). |
 | `grantView` | Optional. `VIEW` permissions to grant, e.g. `DATABASE STATE`, `DEFINITION`. |
 | `grantExecute` | Optional. Execute permissions to grant. Use `SCHEMA::schemaname` to grant execute on all objects in a schema (most common), or `schema.ProcedureName` for a specific stored procedure. |
@@ -223,6 +224,7 @@ For each login declared in JSON (filtered by environment):
 1. Verifies the Entra ID principal exists before attempting login creation.
 2. Creates a server-level login if missing (`CREATE LOGIN ... FROM EXTERNAL PROVIDER`).
 3. Creates a database user if missing (`CREATE USER ... FROM EXTERNAL PROVIDER`).
+   Sets or corrects its default schema when the login has `defaultSchema`.
 4. Adds the user to any declared roles.
 5. Grants any declared `VIEW` permissions.
 6. **Removes** role memberships, VIEW permissions, execute permissions, and database users that exist in SQL but are not declared in JSON for that login.

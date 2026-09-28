@@ -2,6 +2,17 @@
 
 All notable changes to the AzSqlAccessSync module are recorded here.
 
+## 0.11.0
+
+### Added
+
+- **`defaultSchema` on logins.** Optional default schema for the login's user in every database
+  it is declared in. Entra group users have no default schema, so a member running an unqualified
+  `CREATE TABLE` gets an error about a schema named after themselves, even with `db_ddladmin`.
+  `Sync-SqlUserAccess` sets it on `CREATE USER` and runs `ALTER USER ... WITH DEFAULT_SCHEMA` on
+  existing users whose default schema differs (reported as `SetDefaultSchema`). Logins without
+  the field are unchanged. (`Private/Sync-SqlDatabaseUser.ps1`)
+
 ## 0.10.1
 
 ### Fixed

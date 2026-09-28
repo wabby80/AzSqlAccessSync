@@ -8,11 +8,15 @@ function Sync-SqlDatabaseUser {
     )
 
     $safeLogin  = $Login.login.Replace("'", "''")
-    $userExists = Invoke-SqlAccessQuery -SqlServer $SqlServer -AccessToken $AccessToken `
-        -Query "SELECT name FROM sys.database_principals WHERE name = '$safeLogin'" `
-        -Database $Database | Select-Object -ExpandProperty name
+    $existingUser = Invoke-SqlAccessQuery -SqlServer $SqlServer -AccessToken $AccessToken `
+        -Query "SELECT name, default_schema_name FROM sys.database_principals WHERE name = '$safeLogin'" `
+        -Database $Database
 
-    if (-not $userExists) {
+    # Optional default schema. Entra group users have none by default, so an unqualified
+    # CREATE TABLE by a group member tries to create a schema named after that member and fails.
+    $withSchema = if ($Login.defaultSchema) { " WITH DEFAULT_SCHEMA = [$($Login.defaultSchema.Replace(']', ']]'))]" } else { '' }
+
+    if (-not $existingUser) {
         if ($WhatIf) {
             Write-Host "[WhatIf] Would create $($Login.type) USER $($Login.login) in $Database" -ForegroundColor Cyan
             Add-SyncAction -Action 'CreateUser' -Login $Login.login -Database $Database -Detail $Login.type -Planned $true
@@ -21,11 +25,11 @@ function Sync-SqlDatabaseUser {
         Write-Host "Creating $($Login.type) USER $($Login.login) in $Database..." -ForegroundColor Cyan
         switch ($Login.type) {
             'external' {
-                Invoke-SqlAccessQuery -SqlServer $SqlServer -AccessToken $AccessToken -Database $Database -Query "CREATE USER [$($Login.login)] FROM EXTERNAL PROVIDER;"
+                Invoke-SqlAccessQuery -SqlServer $SqlServer -AccessToken $AccessToken -Database $Database -Query "CREATE USER [$($Login.login)] FROM EXTERNAL PROVIDER$withSchema;"
                 Add-SyncAction -Action 'CreateUser' -Login $Login.login -Database $Database -Detail $Login.type -Planned $false
             }
             'sql' {
-                Invoke-SqlAccessQuery -SqlServer $SqlServer -AccessToken $AccessToken -Database $Database -Query "CREATE USER [$($Login.login)] FOR LOGIN [$($Login.login)];"
+                Invoke-SqlAccessQuery -SqlServer $SqlServer -AccessToken $AccessToken -Database $Database -Query "CREATE USER [$($Login.login)] FOR LOGIN [$($Login.login)]$withSchema;"
                 Add-SyncAction -Action 'CreateUser' -Login $Login.login -Database $Database -Detail $Login.type -Planned $false
             }
             default { Write-Host "Unknown user type for $($Login.login), skipping." -ForegroundColor Yellow; Add-SyncAction -Action 'UnknownUserType' -Login $Login.login -Database $Database -Severity Warning }
@@ -34,6 +38,21 @@ function Sync-SqlDatabaseUser {
     }
 
     Write-Verbose "$($Login.type) USER $($Login.login) already exists in $Database."
+
+    $currentSchema = [string]$existingUser.default_schema_name   # DBNull -> '' (DBNull is truthy)
+    if ($Login.defaultSchema -and $currentSchema -ne $Login.defaultSchema) {
+        $current = if ($currentSchema) { $currentSchema } else { 'none' }
+        $detail  = "DEFAULT_SCHEMA = $($Login.defaultSchema) (was: $current)"
+        if ($WhatIf) {
+            Write-Host "[WhatIf] Would set default schema of USER $($Login.login) to [$($Login.defaultSchema)] in $Database" -ForegroundColor Cyan
+            Add-SyncAction -Action 'SetDefaultSchema' -Login $Login.login -Database $Database -Detail $detail -Planned $true
+        } else {
+            Write-Host "Setting default schema of USER $($Login.login) to [$($Login.defaultSchema)] in $Database..." -ForegroundColor Cyan
+            Invoke-SqlAccessQuery -SqlServer $SqlServer -AccessToken $AccessToken -Database $Database `
+                -Query "ALTER USER [$($Login.login)]$withSchema;"
+            Add-SyncAction -Action 'SetDefaultSchema' -Login $Login.login -Database $Database -Detail $detail -Planned $false
+        }
+    }
 
     # Re-link SQL user to login in case the login was recreated
     if ($Login.type -eq 'sql' -and $Database -ne 'master') {
