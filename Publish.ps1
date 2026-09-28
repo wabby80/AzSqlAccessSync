@@ -9,7 +9,8 @@
     and a new file only ships once it's added to $include below.
 
 .PARAMETER NuGetApiKey
-    Gallery API key. Defaults to $env:PSGALLERY_API_KEY. Not needed with -WhatIf.
+    Gallery API key. Defaults to $env:PSGALLERY_API_KEY; if neither is set, you are prompted for
+    it (input hidden). Not needed with -WhatIf.
 
 .PARAMETER Repository
     Target repository. Defaults to PSGallery.
@@ -46,7 +47,10 @@ $include = @(
 )
 
 if (-not $WhatIf -and -not $NuGetApiKey) {
-    throw 'No API key: pass -NuGetApiKey or set $env:PSGALLERY_API_KEY.'
+    $NuGetApiKey = Read-Host -Prompt "API key for $Repository" -AsSecureString | ConvertFrom-SecureString -AsPlainText
+    if (-not $NuGetApiKey) {
+        throw 'No API key: pass -NuGetApiKey, set $env:PSGALLERY_API_KEY, or enter it at the prompt.'
+    }
 }
 
 # Publish-Module requires the folder name to match the module name.
