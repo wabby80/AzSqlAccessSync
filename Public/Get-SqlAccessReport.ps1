@@ -50,7 +50,8 @@ function Get-SqlAccessReport {
         in doubt.
 
         Output is one row per (database, permission, resolved leaf principal), so the same person
-        appears once per database they can reach through any path.
+        appears once per database they can reach through any path. The Excel export groups these
+        rows further (see -ExportToExcel); the console and -PassThru keep the flat rows.
 
     .PARAMETER LoginsFolderPath
         Path to the folder containing per-login JSON files.
@@ -86,13 +87,22 @@ function Get-SqlAccessReport {
         this module - only needed when
         this switch is used) is installed automatically on first use if it isn't already present.
 
+        The 'AccessReport' sheet merges rows that differ only in EffectivePermission, listing the
+        permissions comma-separated, so a principal shows once per role chain and group chain
+        instead of once per grant. A 'Roles' sheet lists each custom role chain from Roles/*.json
+        with its effective permissions, its MemberCount (distinct resolved principals, Active or
+        Eligible) and the databases it's granted in. The server Entra admin's members are listed
+        once on a 'SQL Admins' sheet instead of once per database on 'AccessReport', which gets a
+        note above the table pointing there.
+
     .PARAMETER ExportPath
         Output path for -ExportToExcel. Defaults to
         <Desktop>\SQLAccessReport_<Environment>_(<Database>_)<yyyyMMdd>.xlsx - the Database segment
         only appears when -Database was specified.
 
     .PARAMETER PassThru
-        Returns the flat report rows as objects, for further scripting/piping.
+        Returns the flat report rows as objects, for further scripting/piping - one row per
+        permission, not grouped like the Excel export.
 
     .EXAMPLE
         Get-SqlAccessReport -EnvProfile .\Profiles\example.json
@@ -174,10 +184,15 @@ function Get-SqlAccessReport {
     # --- Load declared access from JSON (no SQL connection - see .DESCRIPTION) ---
     $allLogins = Import-LoginConfig -LoginsFolderPath $LoginsFolderPath -Environment $Environment -IgnoreList $loginIgnoreList
 
+    # Role name -> every definition with that name: one role can be defined more than once with
+    # different "databases" scopes, and Expand-SqlRoleChain picks the ones in scope per database.
     $roleDefsByName = @{}
     if ($RolesFolderPath) {
         foreach ($roleDef in (Import-RoleConfig -RolesFolderPath $RolesFolderPath -Environment $Environment)) {
-            $roleDefsByName[$roleDef.role] = $roleDef
+            if (-not $roleDefsByName.ContainsKey($roleDef.role)) {
+                $roleDefsByName[$roleDef.role] = [System.Collections.Generic.List[object]]::new()
+            }
+            $roleDefsByName[$roleDef.role].Add($roleDef)
         }
     } else {
         Write-Warning 'No RolesFolderPath given - custom roles are reported as-is, not expanded into their effective grants.'
@@ -185,6 +200,7 @@ function Get-SqlAccessReport {
 
     $entraCache = @{}
     $rows       = [System.Collections.Generic.List[PSCustomObject]]::new()
+    $roleEntries = [System.Collections.Generic.List[PSCustomObject]]::new()
     $loginCount = @($allLogins).Count
     $loginIndex = 0
 
@@ -213,7 +229,19 @@ function Get-SqlAccessReport {
             $permissionEntries = [System.Collections.Generic.List[PSCustomObject]]::new()
 
             foreach ($roleName in $db.roles) {
-                $permissionEntries.AddRange([PSCustomObject[]]@(Expand-SqlRoleChain -RoleName $roleName -RoleDefsByName $roleDefsByName))
+                $expanded = @(Expand-SqlRoleChain -RoleName $roleName -RoleDefsByName $roleDefsByName -Database $db.database)
+                $permissionEntries.AddRange([PSCustomObject[]]$expanded)
+
+                # Custom-role expansions (non-empty RoleChain) also feed the Excel 'Roles' sheet -
+                # collected here rather than from $rows so a role granted to an empty group still shows.
+                foreach ($perm in ($expanded | Where-Object { $_.RoleChain })) {
+                    $roleEntries.Add([PSCustomObject]@{
+                        Role                = $roleName
+                        RoleChain           = $perm.RoleChain
+                        EffectivePermission = $perm.EffectivePermission
+                        Database            = $db.database
+                    })
+                }
             }
             foreach ($viewPerm in $db.grantView) {
                 $permissionEntries.Add([PSCustomObject]@{ RoleChain = ''; EffectivePermission = "VIEW $viewPerm" })
@@ -312,31 +340,128 @@ function Get-SqlAccessReport {
             }
         }
 
-        # Table starts a few rows down (row 4) to leave room for a title (row 1) and a generated-on
-        # date (row 2), with a blank row (3) between the date and the header.
+        # Table starts a few rows down (row 5) to leave room for a title (row 1) and a generated-on
+        # date (row 2). Row 3 is blank, except on AccessReport when the server has an Entra admin,
+        # where it points to the 'SQL Admins' sheet; row 4 is always blank above the header.
         $titleRow  = 1
         $dateRow   = 2
-        $headerRow = 4
+        $noteRow   = 3
+        $headerRow = 5
 
-        $excelPackage = $sortedRows | Export-Excel -Path $ExportPath -WorksheetName 'AccessReport' `
+        # The sheet groups rows that differ only in EffectivePermission into one row with the
+        # permissions comma-separated, so a person reaching a role through one path shows once
+        # instead of once per grant. Grouped from $rows (build order) so each cell lists permissions
+        # in the order they were expanded; -PassThru and the console keep the flat rows.
+        $groupKey  = 'Database', 'GrantedToLogin', 'LoginType', 'RoleChain', 'GroupChain',
+                     'ResolvedPrincipal', 'ResolvedPrincipalType', 'MembershipState'
+        $groupedRows = @($rows | Group-Object -Property $groupKey | ForEach-Object {
+            $first = $_.Group[0]
+            [PSCustomObject]@{
+                Database              = $first.Database
+                GrantedToLogin        = $first.GrantedToLogin
+                LoginType             = $first.LoginType
+                RoleChain             = $first.RoleChain
+                EffectivePermission   = (@($_.Group.EffectivePermission | Select-Object -Unique) -join ', ')
+                GroupChain            = $first.GroupChain
+                ResolvedPrincipal     = $first.ResolvedPrincipal
+                ResolvedPrincipalType = $first.ResolvedPrincipalType
+                MembershipState       = $first.MembershipState
+            }
+        })
+        $excelRows = @($groupedRows | Sort-Object Database, GrantedToLogin, ResolvedPrincipal)
+
+        # 'SQL Admins' sheet: the server Entra admin covers every database, so its members are
+        # listed once here instead of once per database on AccessReport.
+        $sqlAdminRows = @($adminRows |
+            Group-Object -Property GrantedToLogin, GroupChain, ResolvedPrincipal, ResolvedPrincipalType, MembershipState |
+            ForEach-Object {
+                $first = $_.Group[0]
+                [PSCustomObject]@{
+                    GrantedToLogin        = $first.GrantedToLogin
+                    GroupChain            = $first.GroupChain
+                    ResolvedPrincipal     = $first.ResolvedPrincipal
+                    ResolvedPrincipalType = $first.ResolvedPrincipalType
+                    MembershipState       = $first.MembershipState
+                }
+            } | Sort-Object ResolvedPrincipal)
+
+        # 'Roles' sheet: what each custom role grants, one row per role chain with its permissions
+        # comma-separated, and the databases it's granted in where those permissions are the same.
+        # MemberCount is the distinct resolved principals (Active or Eligible) that reach that role
+        # chain in any of those databases.
+        $principalsByChainDb = @{}
+        foreach ($row in ($rows | Where-Object { $_.RoleChain })) {
+            $key = "$($row.RoleChain)|$($row.Database)"
+            if (-not $principalsByChainDb.ContainsKey($key)) {
+                $principalsByChainDb[$key] = [System.Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
+            }
+            [void]$principalsByChainDb[$key].Add($row.ResolvedPrincipal)
+        }
+
+        $roleRows = @($roleEntries | Group-Object -Property Role, RoleChain, Database | ForEach-Object {
+            $first = $_.Group[0]
+            [PSCustomObject]@{
+                Role                = $first.Role
+                RoleChain           = $first.RoleChain
+                EffectivePermission = (@($_.Group.EffectivePermission | Select-Object -Unique) -join ', ')
+                Database            = $first.Database
+            }
+        } | Group-Object -Property Role, RoleChain, EffectivePermission | ForEach-Object {
+            $first     = $_.Group[0]
+            $databases = @($_.Group.Database | Sort-Object -Unique)
+            $members   = [System.Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
+            foreach ($dbName in $databases) {
+                $set = $principalsByChainDb["$($first.RoleChain)|$dbName"]
+                if ($set) { $members.UnionWith($set) }
+            }
+            [PSCustomObject]@{
+                Role                = $first.Role
+                RoleChain           = $first.RoleChain
+                EffectivePermission = $first.EffectivePermission
+                MemberCount         = $members.Count
+                Databases           = ($databases -join ', ')
+            }
+        } | Sort-Object Role, RoleChain)
+
+        $excelPackage = $excelRows | Export-Excel -Path $ExportPath -WorksheetName 'AccessReport' `
             -AutoSize -BoldTopRow -AutoFilter -StartRow $headerRow -PassThru
+        if ($roleRows.Count -gt 0) {
+            $excelPackage = $roleRows | Export-Excel -ExcelPackage $excelPackage -WorksheetName 'Roles' `
+                -AutoSize -BoldTopRow -AutoFilter -StartRow $headerRow -PassThru
+        }
+        if ($sqlAdminRows.Count -gt 0) {
+            $excelPackage = $sqlAdminRows | Export-Excel -ExcelPackage $excelPackage -WorksheetName 'SQL Admins' `
+                -AutoSize -BoldTopRow -AutoFilter -StartRow $headerRow -PassThru
 
-        $worksheet  = $excelPackage.Workbook.Worksheets['AccessReport']
-        $lastColumn = $worksheet.Dimension.End.Column
+            $note = $excelPackage.Workbook.Worksheets['AccessReport'].Cells[$noteRow, 1]
+            $note.Value = "Server Entra admin '$($sqlAdminRows[0].GrantedToLogin)' has full access to every database - see the 'SQL Admins' sheet for its members."
+            $note.Style.Font.Italic = $true
+        }
 
-        $worksheet.Cells[$titleRow, 1].Value      = 'SQL Access Report'
-        $worksheet.Cells[$titleRow, 1].Style.Font.Bold = $true
-        $worksheet.Cells[$titleRow, 1].Style.Font.Size = 14
+        $sheetTitles = [ordered]@{
+            'AccessReport' = 'SQL Access Report'
+            'Roles'        = 'SQL Access Report - Roles'
+            'SQL Admins'   = 'SQL Access Report - SQL Admins'
+        }
+        foreach ($sheetName in $sheetTitles.Keys) {
+            $worksheet = $excelPackage.Workbook.Worksheets[$sheetName]
+            if (-not $worksheet) { continue }
+            $lastColumn = $worksheet.Dimension.End.Column
 
-        $worksheet.Cells[$dateRow, 1].Value = "Generated: $(Get-Date -Format 'yyyy-MM-dd HH\:mm')"
+            $worksheet.Cells[$titleRow, 1].Value      = $sheetTitles[$sheetName]
+            $worksheet.Cells[$titleRow, 1].Style.Font.Bold = $true
+            $worksheet.Cells[$titleRow, 1].Style.Font.Size = 14
 
-        $headerRange = $worksheet.Cells[$headerRow, 1, $headerRow, $lastColumn]
-        $headerRange.Style.Fill.PatternType = [OfficeOpenXml.Style.ExcelFillStyle]::Solid
-        $headerRange.Style.Fill.BackgroundColor.SetColor([System.Drawing.Color]::FromArgb(0xDA, 0xE8, 0xFC))
+            $worksheet.Cells[$dateRow, 1].Value = "Generated: $(Get-Date -Format 'yyyy-MM-dd HH\:mm')"
 
-        # -FreezeTopRow always freezes literal row 1, which is the title here, not the header - so
-        # the freeze pane is set explicitly to keep rows 1..headerRow visible while scrolling data.
-        $worksheet.View.FreezePanes($headerRow + 1, 1)
+            $headerRange = $worksheet.Cells[$headerRow, 1, $headerRow, $lastColumn]
+            $headerRange.Style.Fill.PatternType = [OfficeOpenXml.Style.ExcelFillStyle]::Solid
+            $headerRange.Style.Fill.BackgroundColor.SetColor([System.Drawing.Color]::FromArgb(0xDA, 0xE8, 0xFC))
+
+            # -FreezeTopRow always freezes literal row 1, which is the title here, not the header - so
+            # the freeze pane is set explicitly to keep rows 1..headerRow visible while scrolling data.
+            $worksheet.View.FreezePanes($headerRow + 1, 1)
+        }
 
         Close-ExcelPackage $excelPackage
 

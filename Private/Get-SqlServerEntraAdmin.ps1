@@ -14,10 +14,11 @@ function Get-SqlServerEntraAdmin {
 
         Matches by the server's short name (the FQDN's first label) against Get-AzSqlServer in
         whatever subscription is currently selected - Azure SQL server names are globally unique,
-        so this is safe within the right subscription. Returns $null - silently, no warning - if
-        the server isn't found there at all (a VM-hosted target has no such ARM resource at all,
-        and the same result happens if the wrong subscription is currently selected) or if the
-        server exists but has no Entra admin configured.
+        so this is safe within the right subscription. Returns $null if the server isn't found
+        there or has no Entra admin configured. Not finding it is silent for a VM-hosted target
+        (no such ARM resource exists), but for an Azure SQL Database FQDN it warns, since it
+        usually means the wrong subscription is selected and the report would otherwise look
+        complete without the admin rows.
     #>
     param(
         [Parameter(Mandatory)] [string]$SqlServerFqdn
@@ -25,7 +26,12 @@ function Get-SqlServerEntraAdmin {
 
     $shortName = ($SqlServerFqdn -split '\.')[0]
     $server    = Get-AzSqlServer -ErrorAction SilentlyContinue | Where-Object { $_.ServerName -eq $shortName } | Select-Object -First 1
-    if (-not $server) { return $null }
+    if (-not $server) {
+        if ($SqlServerFqdn -match '\.database\.windows\.net$') {
+            Write-Warning "Azure SQL server '$shortName' not found in the current Az subscription '$((Get-AzContext).Subscription.Name)' - the server Entra admin is missing from this report. Select the server's subscription with Set-AzContext and run it again."
+        }
+        return $null
+    }
 
     return Get-AzSqlServerActiveDirectoryAdministrator -ServerName $server.ServerName -ResourceGroupName $server.ResourceGroupName -ErrorAction SilentlyContinue
 }

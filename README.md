@@ -381,6 +381,25 @@ Output is one row per (database, permission, resolved leaf principal) — `Datab
 `ResolvedPrincipal`, `ResolvedPrincipalType`, `MembershipState` — so the same person appears once
 per database they can reach, through whatever path got them there.
 
+The Excel export (`-ExportToExcel`) is grouped for reading; the console and `-PassThru` keep the
+flat rows:
+
+- **`AccessReport` sheet.** Same columns, but rows that differ only in `EffectivePermission` are
+  merged, with the permissions comma-separated. A person reaching a role through one group chain
+  shows on one row instead of one row per grant.
+- **`Roles` sheet.** One row per custom role chain from `Roles/*.json`: `Role`, `RoleChain`,
+  `EffectivePermission` (comma-separated), `MemberCount` (distinct resolved principals reaching
+  it, `Active` or `Eligible`) and `Databases` (where it's granted with those permissions). A role
+  whose definitions differ by `databases` scope gets one row per distinct permission set.
+- **`SQL Admins` sheet.** The server's Entra admin and its resolved members (`GrantedToLogin`,
+  `GroupChain`, `ResolvedPrincipal`, `ResolvedPrincipalType`, `MembershipState`), listed once
+  rather than once per database. These rows aren't repeated on `AccessReport`; a note above its
+  table points here instead.
+
+The admin is looked up in the Az subscription currently selected (`Get-AzContext`). For an Azure
+SQL Database server that isn't found there, the report warns that the admin is missing; select
+the right subscription with `Set-AzContext` and run it again.
+
 > Checking PIM eligibility authenticates separately via `Microsoft.Graph.Authentication`
 > (`Connect-MgGraph`), **not** the existing Az sign-in used everywhere else in this module — the app
 > `Connect-AzAccount` signs into has a fixed permission set that does not include
@@ -411,7 +430,7 @@ $rows = Get-SqlAccessReport -EnvProfile .\Profiles\example.json -PassThru
 | `-Database` | Limit the report to a single database. Omit to report on every database declared in JSON. The server Entra admin's rows are still included for this one database, since that access isn't scoped by `-Database` at all. |
 | `-ExportToExcel` | Write the report to a formatted `.xlsx` — a bold "SQL Access Report" title and generated-on date above the table, a light-blue-filled bold header row, autofilter, and the header row frozen while scrolling — in addition to the console output, then open it. The [`ImportExcel`](https://github.com/dfinke/ImportExcel) module — **not** a hard dependency of this module — is installed automatically on first use if it isn't already present. |
 | `-ExportPath` | Output path for `-ExportToExcel`. Defaults to `<Desktop>\SQLAccessReport_<Environment>_(<Database>_)<yyyyMMdd>.xlsx` — the `<Database>_` segment only appears when `-Database` was specified. |
-| `-PassThru` | Return the flat report rows as objects, for further scripting/piping. |
+| `-PassThru` | Return the flat report rows as objects, for further scripting/piping. Not grouped like the Excel export. |
 
 Console output for the routine "ensuring X" confirmations is behind `-Verbose` (they fire
 on every single run regardless of whether anything actually changed, by design — see

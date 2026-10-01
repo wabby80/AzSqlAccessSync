@@ -2,6 +2,30 @@
 
 All notable changes to the AzSqlAccessSync module are recorded here.
 
+## 0.13.0
+
+### Added
+
+- **Grouped Excel export in `Get-SqlAccessReport`.** The `AccessReport` sheet merges rows that
+  differ only in `EffectivePermission` and lists the permissions comma-separated. A new `Roles`
+  sheet lists each custom role chain with its effective permissions, `MemberCount` and the
+  databases it's granted in. A `SQL Admins` sheet lists the server Entra admin's members once,
+  instead of once per database on `AccessReport`. The console output and `-PassThru` still return
+  one row per permission, including the per-database admin rows. (`Public/Get-SqlAccessReport.ps1`)
+
+### Fixed
+
+- **Report left out the server Entra admin without saying so** when the Azure SQL server wasn't
+  in the currently selected Az subscription, so the report looked complete without it. It now
+  warns with the subscription it searched; VM-hosted targets are still skipped silently.
+  (`Private/Get-SqlServerEntraAdmin.ps1`)
+
+- **Report expanded roles defined more than once using only the last definition.** A role with
+  several definitions under different `databases` scopes (e.g. a master-only definition next to
+  the default one) was expanded using whichever was loaded last, in every database. Expansion now
+  uses the definitions in scope for each database, with the same rule as `Sync-SqlRoles`.
+  (`Private/Expand-SqlRoleChain.ps1`, `Public/Get-SqlAccessReport.ps1`)
+
 ## 0.12.0
 
 ### Changed
