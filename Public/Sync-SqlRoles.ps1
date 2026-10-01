@@ -132,7 +132,7 @@ function Sync-SqlRoles {
     # --- Load role definitions matching this environment ---
     # Same two-level shape as Logins/*.json: acceptedenvironments applies to the whole file,
     # "roles" is always an array (even for a single role), so one file can define several.
-    $roleFiles = Get-ChildItem -Path $rolesFolderPath -Filter *.json
+    $roleFiles = Get-ChildItem -Path $rolesFolderPath -Filter *.json -Recurse
     $roleDefs  = foreach ($file in $roleFiles) {
         $roleConfig = Get-Content $file.FullName -Raw | ConvertFrom-Json
         if ($roleConfig.acceptedenvironments -and ($Environment -in $roleConfig.acceptedenvironments)) {

@@ -11,7 +11,7 @@ function Import-LoginConfig {
         throw "Logins folder not found: $LoginsFolderPath"
     }
 
-    $loginFiles   = Get-ChildItem -Path $LoginsFolderPath -Filter *.json
+    $loginFiles   = Get-ChildItem -Path $LoginsFolderPath -Filter *.json -Recurse
     $allLogins    = @()
     $matchedFiles = 0
 

@@ -12,7 +12,7 @@ function Import-RoleConfig {
         throw "Roles folder not found: $rolesFolderPath"
     }
 
-    $roleFiles = Get-ChildItem -Path $rolesFolderPath -Filter *.json
+    $roleFiles = Get-ChildItem -Path $rolesFolderPath -Filter *.json -Recurse
     $roleDefs  = foreach ($file in $roleFiles) {
         $roleConfig = Get-Content $file.FullName -Raw | ConvertFrom-Json
         if ($roleConfig.acceptedenvironments -and ($Environment -in $roleConfig.acceptedenvironments)) {

@@ -2,6 +2,16 @@
 
 All notable changes to the AzSqlAccessSync module are recorded here.
 
+## 0.12.0
+
+### Changed
+
+- **Login and role JSON files are read from subfolders too.** `LoginsFolderPath` and
+  `RolesFolderPath` are now searched recursively, so the files can be grouped into folders.
+  Files in subfolders were previously ignored without any warning. Files with the same name in
+  different folders are all loaded. (`Private/Import-LoginConfig.ps1`,
+  `Private/Import-RoleConfig.ps1`, `Public/Sync-SqlRoles.ps1`)
+
 ## 0.11.0
 
 ### Added

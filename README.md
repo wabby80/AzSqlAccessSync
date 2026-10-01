@@ -134,8 +134,8 @@ Instead of specifying parameters individually, create a profile JSON:
 
 | Field | Description |
 |---|---|
-| `LoginsFolderPath` | Folder with the login JSON files. A relative path is resolved from the profile file's folder. |
-| `RolesFolderPath` | Folder with the role JSON files, resolved the same way. Required by `Sync-SqlRoles`; optional for `Get-SqlAccessReport` (without it, custom roles aren't expanded). Not used by `Sync-SqlUserAccess`. There is no default — keep your configuration outside the module folder, since `Update-Module` replaces it. |
+| `LoginsFolderPath` | Folder with the login JSON files, including subfolders, so files can be grouped into folders. A relative path is resolved from the profile file's folder. |
+| `RolesFolderPath` | Folder with the role JSON files, including subfolders, resolved the same way. Required by `Sync-SqlRoles`; optional for `Get-SqlAccessReport` (without it, custom roles aren't expanded). Not used by `Sync-SqlUserAccess`. There is no default — keep your configuration outside the module folder, since `Update-Module` replaces it. |
 | `SqlServer` | Server FQDN. |
 | `Environment` | Matched against `acceptedenvironments` in the login and role files. |
 | `LoginIgnoreList` | Optional. Login names to leave alone. |
